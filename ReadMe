@@ -1,1 +1,2 @@
 Debian 9 
+wget https://raw.githubusercontent.com/azroy369/Debian-9-DO/master/Debian9.sh && chmod +x Debian9.sh && ./Debian9.sh
