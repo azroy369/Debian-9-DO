@@ -325,7 +325,6 @@ COMMIT
 # END OPENVPN RULES
 END
 ufw enable 
-yes
 ufw status
 ufw disable
 cd
