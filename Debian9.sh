@@ -2,17 +2,9 @@
 # Modified by AzRoY
 
 #Requirement
-if [ ! -e /usr/bin/curl ]; then
-    apt-get -y update && apt-get -y upgrade
-	apt-get -y install curl
-fi
-# initializing var
 export DEBIAN_FRONTEND=noninteractive
 OS=`uname -m`;
-MYIP=$(curl -4 icanhazip.com)
-if [ $MYIP = "" ]; then
-   MYIP=`ifconfig | grep 'inet addr:' | grep -v inet6 | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d: -f2 | awk '{ print $1}' | head -1`;
-fi
+MYIP=$(wget -qO- ipv4.icanhazip.com);
 MYIP2="s/xxxxxxxxx/$MYIP/g";
 
 # root
@@ -58,9 +50,8 @@ apt-get -y remove sendmail*;
 apt-get update; apt-get -y upgrade;
 
 # Install
-apt-get -y install pptpd dsniff ufw nginx fail2ban bmon iftop htop nmap axel nano iptables traceroute sysv-rc-conf dnsutils bc nethogs openvpn squid3 dropbear stunnel4 vnstat openssl less screen psmisc apt-file whois ptunnel ngrep mtr git zsh mrtg snmp snmpd snmp-mibs-downloader unzip unrar rsyslog debsums rkhunter
-apt-get -y install build-essential
-apt-get -y install libio-pty-perl libauthen-pam-perl apt-show-versions
+apt-get -y install build-essential libio-pty-perl libauthen-pam-perl apt-show-versions pptpd dsniff ufw nginx fail2ban bmon iftop htop nmap axel nano iptables traceroute sysv-rc-conf dnsutils bc nethogs openvpn squid3 dropbear stunnel4 vnstat openssl less screen psmisc apt-file whois ptunnel ngrep mtr git zsh mrtg snmp snmpd  unzip  rsyslog debsums rkhunter -y
+
 
 # disable exim
 service exim4 stop
@@ -101,33 +92,18 @@ sed -i '/Port 22/a Port  81' /etc/ssh/sshd_config
 sed -i 's/Port 22/Port  22/g' /etc/ssh/sshd_config
 sed -i 's/Port 22/Port  442/g' /etc/ssh/sshd_config
 service ssh restart
-
-# install dropbear
-apt-get install dropbear
+cd
+# Setting dropbear
 sed -i 's/NO_START=1/NO_START=0/g' /etc/default/dropbear
 sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=442/g' /etc/default/dropbear
 sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-p 109 -p 110"/g' /etc/default/dropbear
 echo "/bin/false" >> /etc/shells
 /etc/init.d/dropbear restart
 
-# install vnstat gui
-cd /home/vps/public_html/
-wget $source/vnstat_php_frontend-1.5.1.tar.gz
-tar xf vnstat_php_frontend-1.5.1.tar.gz
-rm vnstat_php_frontend-1.5.1.tar.gz
-mv vnstat_php_frontend-1.5.1 vnstat
-cd vnstat
-sed -i "s/\$iface_list = array('eth0', 'sixxs');/\$iface_list = array('eth0');/g" config.php
-sed -i "s/\$language = 'nl';/\$language = 'en';/g" config.php
-sed -i 's/Internal/Internet/g' config.php
-sed -i '/SixXS IPv6/d' config.php
-cd
-
-
 # Restart fail2ban
 service fail2ban restart
 
-cat > /etc/squid3/squid.conf <<-END
+cat > /etc/squid/squid.conf <<-END
 acl localhost src 127.0.0.1/32 ::1
 acl to_localhost dst 127.0.0.0/8 0.0.0.0/32 ::1
 acl SSL_ports port 443
@@ -142,7 +118,7 @@ acl Safe_ports port 488
 acl Safe_ports port 591
 acl Safe_ports port 777
 acl CONNECT method CONNECT
-acl SSH dst xxxxxxxxx-xxxxxxxxx/32
+acl SSH dst xxxxxxxxxxxxx-xxxxxxxxxxxxx/32
 http_access allow SSH
 http_access allow manager localhost
 http_access deny manager
@@ -159,8 +135,8 @@ refresh_pattern -i (/cgi-bin/|\?) 0 0% 0
 refresh_pattern . 0 20% 4320
 visible_hostname proxy.azroyvpn.com
 END
-sed -i $MYIP2 /etc/squid3/squid.conf;
-service squid3 restart
+sed -i $MYIP2 /etc/squid/squid.conf;
+service squid restart
 
 # install stunnel4
 apt-get install stunnel4 -y
@@ -259,6 +235,7 @@ sed -i 's|export KEY_OU=changeme|export KEY_OU=AZROY|' /etc/openvpn/easy-rsa/var
 openssl dhparam -out /etc/openvpn/dh2048.pem 2048
 # Create PKI
 cd /etc/openvpn/easy-rsa
+cp openssl-1.0.0.cnf openssl.cnf
 . ./vars
 ./clean-all
 export EASY_RSA="${EASY_RSA:-.}"
@@ -366,7 +343,8 @@ cat > /etc/ufw/before.rules <<-END
 COMMIT
 # END OPENVPN RULES
 END
-ufw enable
+ufw enable 
+yes
 ufw status
 ufw disable
 cd
@@ -402,6 +380,44 @@ sed -i 's@#Banner@Banner@g' /etc/ssh/sshd_config
 sed -i 's@DROPBEAR_BANNER=""@DROPBEAR_BANNER="/etc/issue.net"@g' /etc/default/dropbear
 service ssh restart
 service dropbear restart
+
+cat > /etc/systemd/system/rc-local.service <<-END
+[Unit]
+Description=/etc/rc.local
+ConditionPathExists=/etc/rc.local
+
+[Service]
+Type=forking
+ExecStart=/etc/rc.local start
+TimeoutSec=0
+StandardOutput=tty
+RemainAfterExit=yes
+SysVStartPriority=99
+
+[Install]
+WantedBy=multi-user.target
+END
+
+cat > /etc/rc.local <<-END
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+exit 0
+END
+chmod +x /etc/rc.local
+systemctl enable rc-local
+systemctl start rc-local.service
+systemctl status rc-local.service
 
 #Setting IPtables
 cat > /etc/iptables.up.rules <<-END
@@ -510,7 +526,6 @@ COMMIT
 -A INPUT -p tcp --dport 25 -j REJECT   
 -A FORWARD -p tcp --dport 25 -j REJECT 
 -A OUTPUT -p tcp --dport 25 -j REJECT 
--A port-scanning -j DROP
 -N port-scanning 
 -A port-scanning -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit 1/s --limit-burst 2 -j RETURN 
 -A fail2ban-ssh -j RETURN
@@ -536,6 +551,23 @@ iptables-restore < /etc/iptables.up.rules
 cd
 sed -i '$ i\screen -AmdS limit /root/limit.sh' /etc/rc.local
 sed -i '$ i\screen -AmdS ban /root/ban.sh' /etc/rc.local
+sed -i '$ i\screen -AmdS limit /root/limit.sh' /etc/rc.local
+sed -i '$ i\screen -AmdS ban /root/ban.sh' /etc/rc.local
+echo "0 0 * * * root /usr/local/bin/user-expire" > /etc/cron.d/user-expire
+echo "0 0 * * * root /usr/local/bin/user-expire-pptp" > /etc/cron.d/user-expire-pptp
+
+cat > /root/ban.sh <<END3
+#!/bin/bash
+#/usr/local/bin/user-ban
+END3
+
+cat > /root/limit.sh <<END3
+#!/bin/bash
+#/usr/local/bin/user-limit
+END3
+
+ed -i '$ i\screen -AmdS limit /root/limit.sh' /etc/rc.local
+sed -i '$ i\screen -AmdS ban /root/ban.sh' /etc/rc.local
 sed -i '$ i\screen -AmdS limit /root/limit.sh' /etc/rc.d/rc.local
 sed -i '$ i\screen -AmdS ban /root/ban.sh' /etc/rc.d/rc.local
 echo "0 0 * * * root /usr/local/bin/user-expire" > /etc/cron.d/user-expire
@@ -552,11 +584,11 @@ cat > /root/limit.sh <<END3
 END3
 
 cd /usr/local/bin
-wget -O premium-script.zip "https://raw.githubusercontent.com/azroy369/autoinstall/master/premium-script.zip"
-unzip premium-script.zip
-rm -f premium-script.zip
+wget -O premium-script.tar.gz "https://raw.githubusercontent.com/ZENON-VPN/autoscript/master/updates/premium-script.tar.gz"
+tar -xvf premium-script.tar.gz
+rm -f premium-script.tar.gz
 
-cp /usr/local/bin/premium-script /usr/local/bin/
+cp /usr/local/bin/premium-script /usr/local/bin/menu
 
 chmod +x /usr/local/bin/trial
 chmod +x /usr/local/bin/user-add
@@ -605,23 +637,28 @@ screen -AmdS limit /root/limit.sh
 screen -AmdS ban /root/ban.sh
 clear
 cd
+echo " "
+echo " "
+echo "Premium Script Successfully Update!"
+echo "AutoScriptVPS By AzRoY"
+echo " "
+echo " "
 
 # finalizing
 apt-get -y autoremove
 chown -R www-data:www-data /home/vps/public_html
 service nginx start
-service php5-fpm start
 service vnstat restart
 service openvpn restart
 service snmpd restart
 service ssh restart
 service dropbear restart
 service fail2ban restart
-service squid3 restart
+service squid restart
 service webmin restart
 service pptpd restart
 sysv-rc-conf rc.local on
-
+cd
 #clearing history
 history -c
 
