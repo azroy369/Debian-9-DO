@@ -95,10 +95,12 @@ service ssh restart
 cd
 # Setting dropbear
 sed -i 's/NO_START=1/NO_START=0/g' /etc/default/dropbear
-sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=442/g' /etc/default/dropbear
-sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-p 109 -p 110"/g' /etc/default/dropbear
+sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=443/g' /etc/default/dropbear
+sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-p 109 -p 110 -p 80"/g' /etc/default/dropbear
+sed -i 's/DROPBEAR_BANNER=/DROPBEAR_BANNER="/etc/issue.net"/g' /etc/issue.net
 echo "/bin/false" >> /etc/shells
-/etc/init.d/dropbear restart
+service ssh restart
+service dropbear restart
 
 # Restart fail2ban
 service fail2ban restart
@@ -199,6 +201,24 @@ ifconfig ppp0 mtu 1400
 END
 mkdir /var/lib/premium-script
 /etc/init.d/pptpd restart
+
+# install mrtg
+wget -O /etc/snmp/snmpd.conf $source/snmpd.conf
+wget -O /root/mrtg-mem.sh $source/mrtg-mem.sh
+chmod +x /root/mrtg-mem.sh
+cd /etc/snmp/
+sed -i 's/TRAPDRUN=no/TRAPDRUN=yes/g' /etc/default/snmpd
+service snmpd restart
+snmpwalk -v 1 -c public localhost 1.3.6.1.4.1.2021.10.1.3.1
+mkdir -p /home/vps/public_html/mrtg
+cfgmaker --zero-speed 100000000 --global 'WorkDir: /home/vps/public_html/mrtg' --output /etc/mrtg.cfg public@localhost
+curl "$source/mrtg.conf" >> /etc/mrtg.cfg
+sed -i 's/WorkDir: \/var\/www\/mrtg/# WorkDir: \/var\/www\/mrtg/g' /etc/mrtg.cfg
+sed -i 's/# Options\[_\]: growright, bits/Options\[_\]: growright/g' /etc/mrtg.cfg
+indexmaker --output=/home/vps/public_html/mrtg/index.html /etc/mrtg.cfg
+if [ -x /usr/bin/mrtg ] && [ -r /etc/mrtg.cfg ]; then mkdir -p /var/log/mrtg ; env LANG=C /usr/bin/mrtg /etc/mrtg.cfg 2>&1 | tee -a /var/log/mrtg/mrtg.log ; fi
+if [ -x /usr/bin/mrtg ] && [ -r /etc/mrtg.cfg ]; then mkdir -p /var/log/mrtg ; env LANG=C /usr/bin/mrtg /etc/mrtg.cfg 2>&1 | tee -a /var/log/mrtg/mrtg.log ; fi
+if [ -x /usr/bin/mrtg ] && [ -r /etc/mrtg.cfg ]; then mkdir -p /var/log/mrtg ; env LANG=C /usr/bin/mrtg /etc/mrtg.cfg 2>&1 | tee -a /var/log/mrtg/mrtg.log ; fi
 cd
 
 # OpenVPN
@@ -324,7 +344,6 @@ cat > /etc/ufw/before.rules <<-END
 COMMIT
 # END OPENVPN RULES
 END
-ufw enable 
 ufw status
 ufw disable
 cd
@@ -407,7 +426,6 @@ cat > /etc/iptables.up.rules <<-END
 :POSTROUTING ACCEPT [0:0]
 -A POSTROUTING -j SNAT --to-source xxxxxxxxx
 -A POSTROUTING -o eth0 -j MASQUERADE
--A POSTROUTING -s 192.168.100.0/24 -o eth0 -j MASQUERADE
 -A POSTROUTING -s 10.1.0.0/24 -o eth0 -j MASQUERADE
 -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
 COMMIT
@@ -620,7 +638,6 @@ cd
 echo " "
 echo " "
 echo "Premium Script Successfully Update!"
-echo "AutoScriptVPS By AzRoY"
 echo " "
 echo " "
 
