@@ -344,8 +344,6 @@ cat > /etc/ufw/before.rules <<-END
 COMMIT
 # END OPENVPN RULES
 END
-ufw status
-ufw disable
 cd
 
 # set ipv4 forward
@@ -416,7 +414,6 @@ END
 chmod +x /etc/rc.local
 systemctl enable rc-local
 systemctl start rc-local.service
-systemctl status rc-local.service
 
 #Setting IPtables
 cat > /etc/iptables.up.rules <<-END
