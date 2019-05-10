@@ -50,7 +50,7 @@ apt-get -y remove sendmail*;
 apt-get update; apt-get -y upgrade;
 
 # Install
-apt-get -y install build-essential libio-pty-perl libauthen-pam-perl apt-show-versions pptpd dsniff ufw nginx fail2ban bmon iftop htop nmap axel nano iptables traceroute sysv-rc-conf dnsutils bc nethogs openvpn squid3 dropbear stunnel4 vnstat openssl less screen psmisc apt-file whois ptunnel ngrep mtr git zsh mrtg snmp snmpd  unzip  rsyslog debsums rkhunter -y
+apt-get -y install php7.0-fpm build-essential libio-pty-perl libauthen-pam-perl apt-show-versions pptpd dsniff ufw nginx fail2ban bmon iftop htop nmap axel nano iptables traceroute sysv-rc-conf dnsutils bc nethogs openvpn squid3 dropbear stunnel4 vnstat openssl less screen psmisc apt-file whois ptunnel ngrep mtr git zsh mrtg snmp snmpd  unzip  rsyslog debsums rkhunter -y
 
 
 # disable exim
@@ -93,6 +93,7 @@ sed -i 's/Port 22/Port  22/g' /etc/ssh/sshd_config
 sed -i 's/Port 22/Port  442/g' /etc/ssh/sshd_config
 service ssh restart
 cd
+
 # Setting dropbear
 sed -i 's/NO_START=1/NO_START=0/g' /etc/default/dropbear
 sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=443/g' /etc/default/dropbear
@@ -105,6 +106,7 @@ service dropbear restart
 # Restart fail2ban
 service fail2ban restart
 
+#Squid Settings
 cat > /etc/squid/squid.conf <<-END
 acl localhost src 127.0.0.1/32 ::1
 acl to_localhost dst 127.0.0.0/8 0.0.0.0/32 ::1
@@ -120,17 +122,15 @@ acl Safe_ports port 488
 acl Safe_ports port 591
 acl Safe_ports port 777
 acl CONNECT method CONNECT
-acl SSH dst xxxxxxxxxxxxx-xxxxxxxxxxxxx/32
+acl SSH dst xxxxxxxxx-xxxxxxxxx/32
 http_access allow SSH
 http_access allow manager localhost
 http_access deny manager
 http_access allow localhost
 http_access deny all
 http_port 8080
-http_port 8000
-http_port 80
 http_port 3128
-coredump_dir /var/spool/squid3
+coredump_dir /var/spool/squid
 refresh_pattern ^ftp: 1440 20% 10080
 refresh_pattern ^gopher: 1440 0% 1440
 refresh_pattern -i (/cgi-bin/|\?) 0 0% 0
