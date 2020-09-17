@@ -19,7 +19,7 @@ echo "nameserver 1.1.1.1" > /etc/resolv.conf
 echo "nameserver 1.0.0.1" >> /etc/resolv.conf
 
 # update & upgrade & install wget curl
-apt-get update;apt-get -y install wget curl;
+apt-get update;apt-get upgrade;apt-get -y install wget curl;
 
 # set time GMT +8
 ln -sf /usr/share/zoneinfo/Asia/Kuala_Lumpur /etc/localtime
@@ -123,7 +123,7 @@ acl Safe_ports port 488
 acl Safe_ports port 591
 acl Safe_ports port 777
 acl CONNECT method CONNECT
-acl SSH dst xxxxxxxxx-xxxxxxxxx/32
+acl SSH dst $MYIP2 /32
 http_access allow SSH
 http_access allow manager localhost
 http_access deny manager
@@ -163,18 +163,18 @@ connect = 127.0.0.1:110
 END
 openssl genrsa -out key.pem 2048
 openssl req -new -x509 -key key.pem -out cert.pem -days 1095 \
--subj "/C=$country/ST=$state/L=$locality/O=$organization/OU=$organizationalunit/CN=$commonname/emailAddress=$email"
+-subj "/C=$MY/ST=$MY/L=$MY/O=$MY/OU=$MY/CN=$commonname/emailAddress=$email"
 cat key.pem cert.pem >> /etc/stunnel/stunnel.pem
 sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4
 /etc/init.d/stunnel4 restart
 
 # install webmin
 cd
-wget "http://script.hostingtermurah.net/repo/webmin_1.801_all.deb"
-dpkg --install webmin_1.801_all.deb;
+wget "https://download.webmin.com/download/repository/pool/contrib/w/webmin/webmin_1.955_all.deb"
+dpkg --install webmin_1.955_all.deb;
 apt-get -y -f install;
 sed -i 's/ssl=1/ssl=0/g' /etc/webmin/miniserv.conf
-rm /root/webmin_1.801_all.deb
+rm /root/webmin_1.955_all.deb
 service webmin restart
 service vnstat restart
 
@@ -256,7 +256,7 @@ cp /etc/openvpn/easy-rsa/keys/server.key /etc/openvpn/server.key
 cp /etc/openvpn/easy-rsa/keys/ca.crt /etc/openvpn/ca.crt
 # Setting Server
 cat > /etc/openvpn/server.conf <<-END
-port 1194
+port $MYIP 443
 proto tcp
 dev tun
 ca ca.crt
@@ -294,7 +294,7 @@ cat > /home/vps/public_html/client.ovpn <<-END
 client
 dev tun
 proto tcp
-remote $MYIP 1194
+remote $MYIP 443
 persist-key
 persist-tun
 dev tun
@@ -333,6 +333,8 @@ service openvpn start
 #Setting USW
 ufw allow ssh
 ufw allow 1194/tcp
+ufw allow 443/tcp
+ufw allow 443/udp
 sed -i 's|DEFAULT_INPUT_POLICY="DROP"|DEFAULT_INPUT_POLICY="ACCEPT"|' /etc/default/ufw
 sed -i 's|DEFAULT_FORWARD_POLICY="DROP"|DEFAULT_FORWARD_POLICY="ACCEPT"|' /etc/default/ufw
 cat > /etc/ufw/before.rules <<-END
